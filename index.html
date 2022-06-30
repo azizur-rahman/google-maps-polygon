@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJbfJEM7cENLUqYq3WNLaPziVcFKDLXgI&callback=initGoogleMap" defer></script>    
+    <style>
+    #google-maps-container{
+        width:1200px;
+        height:600px;
+    }
+    </style>
+
+<script>
+
+
+function fileChanged(e) {
+    // debugger;
+     var fileUpload = $("#fileupload").get(0);
+    var files = fileUpload.files;
+    if (files.length > 0) {
+        // model.append(files[0].name, files[0]);
+         var file = files[0];
+         parseDocument(file)
+    }
+
+    // var file = e.target.files[0]
+    
+  }
+
+  function  parseDocument(file) {
+    // debugger;
+    let fileReader = new FileReader()
+    fileReader.onload = async (e) => {
+    //   let result = extractGoogleCoords(e.target.result)
+    extractGoogleCoords(e.target.result);
+
+      //Do something with result object here
+      
+    //   console.log(result)
+
+    }
+    fileReader.readAsText(file)
+  }
+
+  var googlePolygons = []
+  function extractGoogleCoords(plainText) {
+    
+    // debugger;
+
+    let parser = new DOMParser()
+    let xmlDoc = parser.parseFromString(plainText, "text/xml")
+    
+    let googleMarkers = []
+
+    if (xmlDoc.documentElement.nodeName == "kml") {
+
+        for (const item of xmlDoc.getElementsByTagName('Placemark')) {
+
+            let placeMarkName = item.getElementsByTagName('name')[0].childNodes[0].nodeValue.trim();
+            let polygons = item.getElementsByTagName('Polygon');
+
+            /** POLYGONS PARSE **/
+            for (const polygon of polygons) {
+                let coords = polygon.getElementsByTagName('coordinates')[0].childNodes[0].nodeValue.trim()
+                let points = coords.split(" ")
+
+                let googlePolygonsPaths = []
+                for (const point of points) {
+                    let coord = point.split(",")
+                    googlePolygonsPaths.push({ lat: +coord[1], lng: +coord[0] })
+                }
+                googlePolygons.push(googlePolygonsPaths)
+            }
+        }
+
+    } else {
+        throw "error while parsing"
+    }
+
+    // console.log(googlePolygons);
+
+}
+
+var map;
+function initGoogleMap() {
+
+    setTimeout(() => {
+
+            map = new google.maps.Map(document.getElementById('google-maps-container'),{
+                    center:{
+                        lat:23.811056,
+                        lng:90.407608
+                    },
+                    zoom: 8
+            });
+
+        for (const iterator of googlePolygons) {
+           
+            console.log(iterator);
+
+            var polyPath= iterator;
+
+            var bdPolygon= new google.maps.Polygon({
+                paths: polyPath,
+                strokeColor: '#FF0000',
+                strokeOpacity: 0.8,
+                strokeWeight: 1,
+                fillColor: '#FF0000',
+                fillOpacity: 0.35
+            });
+
+            bdPolygon.setMap(map);
+
+        }
+
+    }, 10000);
+   
+}
+
+</script>
+</head>
+    <body>
+        <input type='file' id="fileupload" accept=".kml,.kmz" onchange="fileChanged();">
+        <div id="google-maps-container">
+        </div>
+    </body>
+</html>
+
+
+
